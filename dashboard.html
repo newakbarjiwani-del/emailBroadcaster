@@ -73,6 +73,19 @@
     </section>
   </div>
 
+  <div id="detailModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="detailTitle">Detail Pesan</h2>
+          <p class="muted small" id="detailSub">—</p>
+        </div>
+        <button type="button" class="modal-close" id="btnCloseDetail">Tutup</button>
+      </div>
+      <div class="modal-body" id="detailBody">Memuat...</div>
+    </div>
+  </div>
+
   <p id="toast" class="toast" hidden></p>
 
   <script>
@@ -100,12 +113,112 @@
       return new Date(String(dt).replace(' ', 'T')).toLocaleString('id-ID');
     }
 
+    function formatRp(n) {
+      const num = Number(n || 0);
+      return 'Rp' + num.toLocaleString('id-ID');
+    }
+
     function escapeHtml(v) {
       return String(v ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    function parseItems(itemsJson) {
+      try {
+        const items = typeof itemsJson === 'string' ? JSON.parse(itemsJson) : itemsJson;
+        return Array.isArray(items) ? items : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function row(label, value) {
+      if (value === null || value === undefined || value === '') return '';
+      return `<div class="k">${escapeHtml(label)}</div><div class="v">${value}</div>`;
+    }
+
+    function renderDetail(m) {
+      const items = parseItems(m.itemsJson);
+      const meta = m.meta || {};
+      const isBilling = m.type === 'BILLING';
+
+      const itemRows = items.length
+        ? items.map((it) => `
+            <tr>
+              <td>${escapeHtml(it.name || '-')}</td>
+              <td class="num">${formatRp(it.amount)}</td>
+            </tr>`).join('')
+        : `<tr><td colspan="2" class="muted">Tidak ada item tagihan</td></tr>`;
+
+      let totalLine = formatRp(m.totalAmount);
+      if (meta.adminFee != null && meta.adminFee !== '') {
+        totalLine += ` + ${formatRp(meta.adminFee)} (${escapeHtml(meta.adminFeeLabel || 'Admin')})`;
+      }
+
+      document.getElementById('detailTitle').textContent = isBilling ? 'Detail Penagihan' : 'Detail Konfirmasi';
+      document.getElementById('detailSub').textContent = `${m.subject || '-'} · ${m.status || '-'}`;
+
+      document.getElementById('detailBody').innerHTML = `
+        <div class="detail-grid">
+          ${row('Status', badge(m.status))}
+          ${row('Tipe', escapeHtml(isBilling ? 'Penagihan' : 'Konfirmasi Pembayaran'))}
+          ${row('Dibuat', escapeHtml(fmt(m.createdAt)))}
+          ${row('Terkirim', escapeHtml(m.sentAt ? fmt(m.sentAt) : '-'))}
+          ${row('Nama', escapeHtml(m.studentName))}
+          ${row('Kelas', escapeHtml(m.studentClass || '-'))}
+          ${row('NIS', escapeHtml(m.studentNis || '-'))}
+          ${row('Email', escapeHtml(m.recipientEmail))}
+          ${row('No. Invoice', escapeHtml(m.orderNumber || '-'))}
+          ${row('Nomor VA', escapeHtml(m.vaNumber || '-'))}
+          ${row('Jenis Tagihan', escapeHtml(meta.billType || '-'))}
+          ${row('Tanggal Dibuat', escapeHtml(meta.invoiceDate || '-'))}
+          ${row('Tanggal Aktif', escapeHtml(meta.activeDate || '-'))}
+          ${row('Tanggal Berakhir', escapeHtml(meta.expireDate || '-'))}
+          ${row('Organisasi', escapeHtml(meta.organizationName || '-'))}
+          ${row('Link Pembayaran', m.paymentLink ? `<a href="${escapeHtml(m.paymentLink)}" target="_blank" rel="noopener">${escapeHtml(m.paymentLink)}</a>` : '-')}
+          ${!isBilling ? row('Jumlah Bayar', escapeHtml(formatRp(m.paymentAmount))) : ''}
+          ${!isBilling ? row('Total Tagihan', escapeHtml(formatRp(m.billAmount ?? m.totalAmount))) : ''}
+          ${m.outstandingAmount != null ? row('Outstanding', escapeHtml(formatRp(m.outstandingAmount))) : ''}
+          ${row('Referensi', escapeHtml(m.referenceNumber || '-'))}
+          ${row('Metode', escapeHtml(m.paymentMethod || '-'))}
+          ${m.errorMessage ? row('Error', `<span class="err">${escapeHtml(m.errorMessage)}</span>`) : ''}
+        </div>
+
+        <div style="font-weight:700;margin-bottom:6px;">Rincian Item</div>
+        <table class="detail-items">
+          <thead>
+            <tr>
+              <th>Jenis Tagihan</th>
+              <th class="num">Nominal</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+        <div class="detail-total">Total Nominal: ${escapeHtml(totalLine)}</div>
+        ${m.paymentGuide ? `<div style="margin-top:14px;"><div class="muted small" style="font-weight:700;margin-bottom:4px;">Tata Cara</div><div style="white-space:pre-wrap;">${escapeHtml(m.paymentGuide)}</div></div>` : ''}
+      `;
+    }
+
+    async function openDetail(id) {
+      const modal = document.getElementById('detailModal');
+      const body = document.getElementById('detailBody');
+      body.textContent = 'Memuat...';
+      modal.hidden = false;
+      try {
+        const res = await fetch(`api/message.php?id=${encodeURIComponent(id)}`, { headers: headers() });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Gagal memuat detail');
+        renderDetail(json.data);
+      } catch (e) {
+        body.innerHTML = `<p class="err">${escapeHtml(e.message)}</p>`;
+      }
+    }
+
+    function closeDetail() {
+      document.getElementById('detailModal').hidden = true;
     }
 
     async function loadMessages() {
@@ -134,7 +247,7 @@
       }
 
       tbody.innerHTML = json.data.map((m) => `
-        <tr>
+        <tr class="row-click" data-id="${escapeHtml(m.id)}" title="Klik untuk lihat detail">
           <td>${fmt(m.createdAt)}</td>
           <td>${m.type === 'BILLING' ? 'Penagihan' : 'Konfirmasi'}</td>
           <td>
@@ -149,7 +262,7 @@
             ${m.sentAt ? `<div class="muted small">sent ${fmt(m.sentAt)}</div>` : ''}
           </td>
           <td>
-            ${m.status === 'FAILED' ? `<button data-retry="${m.id}" class="linkish">Retry</button>` : ''}
+            ${m.status === 'FAILED' ? `<button data-retry="${m.id}" class="linkish">Retry</button>` : `<span class="muted small">Detail</span>`}
           </td>
         </tr>
       `).join('');
@@ -159,6 +272,13 @@
     document.getElementById('q').oninput = debounce(() => loadMessages().catch((e) => toast(e.message)), 350);
     document.getElementById('status').onchange = () => loadMessages().catch((e) => toast(e.message));
     document.getElementById('type').onchange = () => loadMessages().catch((e) => toast(e.message));
+    document.getElementById('btnCloseDetail').onclick = closeDetail;
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') closeDetail();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetail();
+    });
 
     document.getElementById('btnProcess').onclick = async () => {
       try {
@@ -173,17 +293,24 @@
     };
 
     document.getElementById('rows').onclick = async (e) => {
-      const id = e.target?.dataset?.retry;
-      if (!id) return;
-      try {
-        const res = await fetch(`api/retry.php?id=${encodeURIComponent(id)}`, { method: 'POST', headers: headers() });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Gagal retry');
-        toast('Pesan dikembalikan ke PENDING');
-        await loadMessages();
-      } catch (err) {
-        toast(err.message);
+      const retryId = e.target?.dataset?.retry;
+      if (retryId) {
+        e.stopPropagation();
+        try {
+          const res = await fetch(`api/retry.php?id=${encodeURIComponent(retryId)}`, { method: 'POST', headers: headers() });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Gagal retry');
+          toast('Pesan dikembalikan ke PENDING');
+          await loadMessages();
+        } catch (err) {
+          toast(err.message);
+        }
+        return;
       }
+
+      const tr = e.target.closest('tr[data-id]');
+      if (!tr) return;
+      openDetail(tr.dataset.id);
     };
 
     function debounce(fn, ms) {
