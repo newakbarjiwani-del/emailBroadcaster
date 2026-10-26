@@ -1,0 +1,5 @@
+# Blok akses langsung ke folder sensitif (Apache)
+RedirectMatch 403 (?i)/(app|storage|sql|cron)/
+<FilesMatch "(^\.env|\.sqlite$|\.sql$)">
+  Require all denied
+</FilesMatch>

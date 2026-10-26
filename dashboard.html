@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Email Broadcaster — Dashboard</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="top">
@@ -104,7 +104,7 @@
       if (status) params.set('status', status);
       if (type) params.set('type', type);
 
-      const res = await fetch(`/api/messages?${params}`, { headers: headers() });
+      const res = await fetch(`api/messages.php?${params}`, { headers: headers() });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Gagal memuat');
 
@@ -149,7 +149,7 @@
 
     document.getElementById('btnProcess').onclick = async () => {
       try {
-        const res = await fetch('/api/process-now', { method: 'POST', headers: headers() });
+        const res = await fetch('api/process-now.php', { method: 'POST', headers: headers() });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Gagal proses');
         toast(json.skipped ? json.reason : `Diproses: ${json.processed}, sent: ${json.sent}, failed: ${json.failed}`);
@@ -163,7 +163,7 @@
       const id = e.target?.dataset?.retry;
       if (!id) return;
       try {
-        const res = await fetch(`/api/messages/${id}/retry`, { method: 'POST', headers: headers() });
+        const res = await fetch(`api/retry.php?id=${encodeURIComponent(id)}`, { method: 'POST', headers: headers() });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Gagal retry');
         toast('Pesan dikembalikan ke PENDING');
