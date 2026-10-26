@@ -86,19 +86,42 @@ class Config
         return (string) self::get('ORGANIZATION_NAME', 'Yayasan Asasi Indonesia');
     }
 
-    /** Absolute URL for logo in email (must be publicly reachable). */
+    /** Absolute URL fallback (HTTPS public URL). Prefer CID embed via mailLogoPath(). */
     public static function mailLogoUrl(): string
     {
-        $logo = trim((string) self::get('MAIL_LOGO_URL', ''));
-        if ($logo !== '') {
-            if (preg_match('#^https?://#i', $logo)) {
-                return $logo;
-            }
-            $base = rtrim((string) self::get('APP_BASE_URL', ''), '/');
-            return $base . '/' . ltrim($logo, '/');
+        $logo = trim((string) self::get('MAIL_LOGO_URL', 'logo.png'));
+        if ($logo === '') {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $logo)) {
+            return $logo;
+        }
+        $base = rtrim((string) self::get('APP_BASE_URL', ''), '/');
+        return $base !== '' ? ($base . '/' . ltrim($logo, '/')) : ltrim($logo, '/');
+    }
+
+    /** Local filesystem path to logo for CID embed (works in Gmail). */
+    public static function mailLogoPath(string $rootPath): ?string
+    {
+        $logo = trim((string) self::get('MAIL_LOGO_URL', 'logo.png'));
+        if ($logo === '' || preg_match('#^https?://#i', $logo)) {
+            // If absolute URL, still try default local logo.png for embed
+            $candidate = $rootPath . DIRECTORY_SEPARATOR . 'logo.png';
+            return is_file($candidate) ? $candidate : null;
         }
 
-        $base = rtrim((string) self::get('APP_BASE_URL', ''), '/');
-        return $base !== '' ? ($base . '/logo.png') : 'logo.png';
+        $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($logo, '/\\'));
+        $candidate = $rootPath . DIRECTORY_SEPARATOR . $relative;
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+
+        $fallback = $rootPath . DIRECTORY_SEPARATOR . 'logo.png';
+        return is_file($fallback) ? $fallback : null;
+    }
+
+    public static function mailLogoCid(): string
+    {
+        return 'ict-logo';
     }
 }

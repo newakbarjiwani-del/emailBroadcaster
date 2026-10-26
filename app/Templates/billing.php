@@ -64,10 +64,9 @@ function render_billing_email(array $message): array
                   </div>'
         : '';
 
-    $logoUrl = Config::mailLogoUrl();
-    $headerLogo = $logoUrl !== ''
-        ? '<img src="' . escape_html($logoUrl) . '" alt="ICT" width="72" height="72" style="display:block;width:72px;height:72px;border:0;border-radius:8px;" />'
-        : '';
+    // CID embed (inline attachment) — lebih andal di Gmail daripada URL http://IP/...
+    $logoSrc = 'cid:' . Config::mailLogoCid();
+    $headerLogo = '<img src="' . escape_html($logoSrc) . '" alt="ICT" width="72" height="72" style="display:block;width:72px;height:72px;border:0;" />';
 
     $detailRows = [
         ['No. Invoice', $message['orderNumber'] ?? null],

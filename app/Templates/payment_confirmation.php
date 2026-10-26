@@ -68,7 +68,7 @@ function render_payment_confirmation_email(array $message): array
             </p>
             <p style="margin:16px 0 0;font-weight:700;">Thank You.</p>
             <div style="margin-top:28px;text-align:center;">
-              <img src="' . escape_html(Config::mailLogoUrl()) . '" alt="Logo" width="120" style="max-width:120px;height:auto;border:0;display:inline-block;" />
+              <img src="cid:' . escape_html(Config::mailLogoCid()) . '" alt="ICT" width="96" height="96" style="max-width:96px;height:auto;border:0;display:inline-block;" />
             </div>
           </td>
         </tr>

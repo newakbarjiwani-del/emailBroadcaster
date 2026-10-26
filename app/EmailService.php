@@ -25,6 +25,16 @@ class EmailService
         $pending = $this->repo->findPending($limit);
         $sent = 0;
         $failed = 0;
+        $root = dirname(__DIR__);
+        $logoPath = Config::mailLogoPath($root);
+        $inline = [];
+        if ($logoPath) {
+            $inline[] = [
+                'path' => $logoPath,
+                'cid' => Config::mailLogoCid(),
+                'name' => basename($logoPath),
+            ];
+        }
 
         foreach ($pending as $row) {
             $this->repo->markSending($row['id']);
@@ -36,7 +46,8 @@ class EmailService
                     $message['recipientEmail'],
                     $message['subject'],
                     $rendered['html'],
-                    $rendered['text']
+                    $rendered['text'],
+                    $inline
                 );
                 $this->repo->markSent($row['id']);
                 $sent++;

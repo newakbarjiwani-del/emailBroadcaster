@@ -2,11 +2,20 @@
 
 /**
  * Minimal SMTP client (AUTH LOGIN + STARTTLS/SSL) — tanpa Composer.
+ * Mendukung inline image (CID) agar logo tampil di Gmail.
  */
 class Mailer
 {
-    public static function send(string $to, string $subject, string $html, string $text = ''): void
-    {
+    /**
+     * @param array<int, array{path:string,cid:string,name?:string}> $inlineImages
+     */
+    public static function send(
+        string $to,
+        string $subject,
+        string $html,
+        string $text = '',
+        array $inlineImages = []
+    ): void {
         if (!Config::smtpConfigured()) {
             throw new RuntimeException('SMTP belum dikonfigurasi. Isi SMTP_* dan MAIL_FROM_* di file .env');
         }
@@ -30,14 +39,15 @@ class Mailer
 
         try {
             self::expect($fp, [220]);
-            self::command($fp, 'EHLO localhost', [250]);
+            $ehloHost = self::ehloName();
+            self::command($fp, 'EHLO ' . $ehloHost, [250]);
 
             if ($secure === 'tls') {
                 self::command($fp, 'STARTTLS', [220]);
                 if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
                     throw new RuntimeException('STARTTLS gagal');
                 }
-                self::command($fp, 'EHLO localhost', [250]);
+                self::command($fp, 'EHLO ' . $ehloHost, [250]);
             }
 
             self::command($fp, 'AUTH LOGIN', [334]);
@@ -48,30 +58,68 @@ class Mailer
             self::command($fp, 'RCPT TO:<' . $to . '>', [250, 251]);
             self::command($fp, 'DATA', [354]);
 
-            $boundary = 'b_' . bin2hex(random_bytes(8));
+            if ($text === '') {
+                $text = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], ["\n", "\n", "\n", "\n"], $html));
+            }
+
+            $altBoundary = 'alt_' . bin2hex(random_bytes(8));
+            $relatedBoundary = 'rel_' . bin2hex(random_bytes(8));
+            $hasInline = count($inlineImages) > 0;
+
+            $altBody = '';
+            $altBody .= '--' . $altBoundary . "\r\n";
+            $altBody .= "Content-Type: text/plain; charset=UTF-8\r\n";
+            $altBody .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $altBody .= chunk_split(base64_encode($text)) . "\r\n";
+            $altBody .= '--' . $altBoundary . "\r\n";
+            $altBody .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $altBody .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $altBody .= chunk_split(base64_encode($html)) . "\r\n";
+            $altBody .= '--' . $altBoundary . "--\r\n";
+
             $headers = [];
             $headers[] = 'Date: ' . date('r');
             $headers[] = 'From: ' . self::encodeAddress($fromName, $fromEmail);
             $headers[] = 'To: <' . $to . '>';
             $headers[] = 'Subject: ' . self::encodeHeader($subject);
             $headers[] = 'MIME-Version: 1.0';
-            $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+            $headers[] = 'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $ehloHost . '>';
             $headers[] = 'X-Mailer: EmailBroadcaster-PHP';
 
-            if ($text === '') {
-                $text = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], ["\n", "\n", "\n", "\n"], $html));
-            }
+            if ($hasInline) {
+                $headers[] = 'Content-Type: multipart/related; type="multipart/alternative"; boundary="' . $relatedBoundary . '"';
 
-            $body = '';
-            $body .= '--' . $boundary . "\r\n";
-            $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
-            $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
-            $body .= chunk_split(base64_encode($text)) . "\r\n";
-            $body .= '--' . $boundary . "\r\n";
-            $body .= "Content-Type: text/html; charset=UTF-8\r\n";
-            $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
-            $body .= chunk_split(base64_encode($html)) . "\r\n";
-            $body .= '--' . $boundary . "--\r\n";
+                $body = '';
+                $body .= '--' . $relatedBoundary . "\r\n";
+                $body .= 'Content-Type: multipart/alternative; boundary="' . $altBoundary . '"' . "\r\n\r\n";
+                $body .= $altBody . "\r\n";
+
+                foreach ($inlineImages as $img) {
+                    $path = $img['path'] ?? '';
+                    $cid = $img['cid'] ?? '';
+                    if ($path === '' || $cid === '' || !is_file($path)) {
+                        continue;
+                    }
+                    $bytes = file_get_contents($path);
+                    if ($bytes === false) {
+                        continue;
+                    }
+                    $mime = self::detectMime($path);
+                    $name = $img['name'] ?? basename($path);
+
+                    $body .= '--' . $relatedBoundary . "\r\n";
+                    $body .= 'Content-Type: ' . $mime . '; name="' . self::encodeHeader($name) . '"' . "\r\n";
+                    $body .= "Content-Transfer-Encoding: base64\r\n";
+                    $body .= 'Content-ID: <' . $cid . '>' . "\r\n";
+                    $body .= 'Content-Disposition: inline; filename="' . self::encodeHeader($name) . '"' . "\r\n\r\n";
+                    $body .= chunk_split(base64_encode($bytes)) . "\r\n";
+                }
+
+                $body .= '--' . $relatedBoundary . "--\r\n";
+            } else {
+                $headers[] = 'Content-Type: multipart/alternative; boundary="' . $altBoundary . '"';
+                $body = $altBody;
+            }
 
             $data = implode("\r\n", $headers) . "\r\n\r\n" . $body;
             $data = preg_replace("/\r\n\./", "\r\n..", $data);
@@ -81,6 +129,27 @@ class Mailer
         } finally {
             fclose($fp);
         }
+    }
+
+    private static function ehloName(): string
+    {
+        $base = (string) Config::get('APP_BASE_URL', '');
+        $host = parse_url($base, PHP_URL_HOST);
+        if (is_string($host) && $host !== '') {
+            return $host;
+        }
+        return 'email-broadcaster.local';
+    }
+
+    private static function detectMime(string $path): string
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        return match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
     }
 
     private static function encodeAddress(string $name, string $email): string
