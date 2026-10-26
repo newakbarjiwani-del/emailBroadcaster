@@ -6,10 +6,10 @@ class PaymentController
     {
     }
 
-    public function store(): void
+    public function store(?array $payload = null): void
     {
         Auth::check();
-        $payload = read_json_body();
+        $payload = $payload ?? read_json_body();
 
         $studentName = first_value($payload, ['studentName', 'nama', 'name']);
         $recipientEmail = first_value($payload, ['recipientEmail', 'email']);
@@ -32,6 +32,7 @@ class PaymentController
 
         json_response([
             'ok' => true,
+            'method' => 'payment_confirmation',
             'queued' => 1,
             'data' => message_to_array($row),
         ], 201);
@@ -59,9 +60,13 @@ class PaymentController
         }
 
         $orderNumber = first_value($payload, ['orderNumber', 'invoiceNumber']);
+        $org = first_value($payload, ['organizationName', 'yayasan', 'organisasi'], Config::organizationName());
         $subject = first_value($payload, ['subject']);
         if (!$subject) {
-            $subject = 'Konfirmasi Pembayaran' . ($orderNumber ? ' #' . $orderNumber : '');
+            $subject = 'Confirmation of Receipt at ' . $org;
+            if ($orderNumber) {
+                $subject .= ' #' . $orderNumber;
+            }
         }
 
         $paidAt = first_value($payload, ['paidAt']);
@@ -87,6 +92,9 @@ class PaymentController
             'va_number' => first_value($payload, ['vaNumber', 'va']),
             'payment_link' => null,
             'payment_guide' => null,
+            'meta_json' => json_encode([
+                'organizationName' => $org,
+            ], JSON_UNESCAPED_UNICODE),
             'items_json' => json_encode($items, JSON_UNESCAPED_UNICODE),
             'total_amount' => $billAmount,
             'bill_amount' => $billAmount,
@@ -94,7 +102,7 @@ class PaymentController
             'outstanding_amount' => $outstanding,
             'order_number' => $orderNumber,
             'reference_number' => first_value($payload, ['referenceNumber', 'refNumber']),
-            'payment_method' => first_value($payload, ['paymentMethod', 'metode']),
+            'payment_method' => first_value($payload, ['paymentMethod', 'metodePembayaran', 'bank']),
             'paid_at' => $paidAt,
         ];
     }

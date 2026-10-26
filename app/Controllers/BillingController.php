@@ -6,10 +6,10 @@ class BillingController
     {
     }
 
-    public function store(): void
+    public function store(?array $body = null): void
     {
         Auth::check();
-        $body = read_json_body();
+        $body = $body ?? read_json_body();
 
         if (is_list_array($body)) {
             $rawList = $body;
@@ -48,6 +48,7 @@ class BillingController
 
         json_response([
             'ok' => true,
+            'method' => 'billing',
             'queued' => count($created),
             'failed' => count($errors),
             'data' => $created,

@@ -41,6 +41,9 @@ function render_payment_confirmation_email(array $message): array
     }
 
     $name = $message['studentName'] ?? $message['recipientName'] ?? 'Wali Murid';
+    $meta = $message['meta'] ?? parse_meta($message['metaJson'] ?? '{}');
+    $org = (string) ($meta['organizationName'] ?? Config::organizationName());
+    $brandOrange = (string) Config::get('MAIL_BRAND_ORANGE', '#f59d42');
 
     $html = '<!DOCTYPE html>
 <html>
@@ -50,8 +53,8 @@ function render_payment_confirmation_email(array $message): array
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
         <tr>
-          <td style="background:#ea580c;color:#fff;padding:28px 24px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;">Thank You ! Your payment has been received</div>
+          <td style="background:' . escape_html($brandOrange) . ';color:#fff;padding:28px 24px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;">Thank You! Your payment has been received</div>
           </td>
         </tr>
         <tr>
@@ -64,7 +67,7 @@ function render_payment_confirmation_email(array $message): array
               ' . $rows . '
             </table>
             <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.6;">
-              Please keep this email as your reference. If you have any questions about Your order please contact the school finance office.
+              Please keep this email as your reference. If you have any questions about Your order please contact ' . escape_html($org) . ' finance office.
             </p>
             <p style="margin:16px 0 0;font-weight:700;">Thank You.</p>
           </td>
@@ -75,9 +78,9 @@ function render_payment_confirmation_email(array $message): array
 </body>
 </html>';
 
-    $text = "Thank You ! Your payment has been received\n\n";
+    $text = "Thank You! Your payment has been received\n\n";
     $text .= 'Dear ' . $name . ",\n\n";
-    $text .= "Great news, Your payment is successful!\n\n";
+    $text .= "Great news, Your payment is successful! Below are the summary of Your purchase :\n\n";
     $text .= 'Order Number: ' . ($message['orderNumber'] ?? '-') . "\n";
     $text .= 'Date/Time: ' . format_datetime($message['paidAt'] ?? $message['createdAt'] ?? null) . "\n";
     $text .= 'Item(s): ' . $itemLabel . "\n";

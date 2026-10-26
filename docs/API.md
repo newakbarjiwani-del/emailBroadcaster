@@ -37,6 +37,7 @@ Jika `API_TOKEN` kosong, API terbuka tanpa auth.
 
 | Method | Endpoint                        | Keterangan                                  |
 | ------ | ------------------------------- | ------------------------------------------- |
+| POST   | `/api/notify.php`               | **Disarankan** — bedakan lewat field `method` |
 | POST   | `/api/billing.php`              | Antri email penagihan (single / bulk)       |
 | POST   | `/api/payment-confirmation.php` | Antri email konfirmasi pembayaran           |
 | GET    | `/api/messages.php`             | List pesan + summary status                 |
@@ -50,9 +51,63 @@ Dashboard: `/dashboard.html`
 
 ---
 
+## 0) Notify (satu endpoint + `method`) — disarankan
+
+`POST /api/notify.php`
+
+| `method` | Alias | Hasil email |
+|----------|-------|-------------|
+| `billing` | `tagihan`, `invoice`, `penagihan` | Penagihan (template yang sudah ada) |
+| `payment_confirmation` | `konfirmasi`, `payment_success`, `confirmation` | Konfirmasi pembayaran berhasil |
+
+> `paymentMethod` = bank (Permata/BSI). Jangan tertukar dengan `method`.
+
+### Tagihan
+
+```json
+{
+  "method": "billing",
+  "nama": "Gaza Solahudin Mubarok",
+  "email": "fatwaakbar2003@gmail.com",
+  "va": "900362125117",
+  "orderNumber": "DAYCARE02/262701-0006",
+  "billType": "CLOSE",
+  "items": [{ "name": "SPP DAYCARE JULI 2026", "amount": 247500 }]
+}
+```
+
+### Konfirmasi pembayaran berhasil
+
+```json
+{
+  "method": "payment_confirmation",
+  "nama": "IBRAHIM ARFA GUNAWAN",
+  "email": "ortu@gmail.com",
+  "orderNumber": "QUBAP-DFU-262701-221",
+  "paymentAmount": 2708000,
+  "billAmount": 10028000,
+  "outstandingAmount": 7320000,
+  "referenceNumber": "1787702013506227",
+  "paymentMethod": "Permata",
+  "paidAt": "2026-08-26T06:53:44+07:00",
+  "items": [{ "name": "Daftar Ulang Tahun 2026/2027", "amount": 10028000 }]
+}
+```
+
+Teks email konfirmasi:
+- *Thank You! Your payment has been received*
+- *Great news, Your payment is successful! Below are the summary of Your purchase :*
+
+Endpoint lama tetap bisa dipakai. Field `method` di payload **selalu dihormati**, meskipun URL-nya `/api/billing.php` atau `/api/payment-confirmation.php`.
+
+Contoh: kirim `"method":"payment_confirmation"` ke `/api/billing.php` tetap akan membuat tipe **PAYMENT_CONFIRMATION** (bukan tagihan).
+
+---
+
 ## 1) Antri Email Penagihan
 
-`POST /api/billing.php`
+`POST /api/billing.php`  
+(atau `POST /api/notify.php` + `"method":"billing"`)
 
 Menyimpan pesan tipe `BILLING` status `PENDING`. Pengiriman dilakukan cron tiap 2 menit (atau `process-now.php`).
 

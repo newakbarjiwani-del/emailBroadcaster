@@ -68,6 +68,7 @@ Base URL contoh: `http://101.50.2.56/emailBroadcaster`
 
 | Method | File | Keterangan |
 |--------|------|------------|
+| POST | `/api/notify.php` | Disarankan — bedakan lewat `method` (`billing` / `payment_confirmation`) |
 | POST | `/api/billing.php` | Antri email penagihan (single/bulk) |
 | POST | `/api/payment-confirmation.php` | Antri konfirmasi pembayaran |
 | GET | `/api/messages.php` | List + summary (`?status=&type=&q=`) |
