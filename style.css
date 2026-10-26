@@ -456,6 +456,61 @@ tbody tr.row-click:hover {
   line-height: 1.35;
 }
 
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+}
+
+.pager-info {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pager-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pager-page {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0c4a6e;
+  min-width: 120px;
+  text-align: center;
+}
+
+.pager-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pager-size select {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+}
+
+.pager-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .toast {
   position: fixed;
   bottom: 20px;

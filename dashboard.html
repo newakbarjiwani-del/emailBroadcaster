@@ -71,6 +71,23 @@
         </tbody>
       </table>
     </section>
+
+    <section class="pager" id="pager">
+      <div class="pager-info" id="pagerInfo">—</div>
+      <div class="pager-actions">
+        <label class="pager-size">
+          Per halaman
+          <select id="pageSize">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button type="button" id="btnPrev" disabled>Sebelumnya</button>
+        <span class="pager-page" id="pagerPage">Halaman 1 / 1</span>
+        <button type="button" id="btnNext" disabled>Berikutnya</button>
+      </div>
+    </section>
   </div>
 
   <div id="detailModal" class="modal-backdrop" hidden>
@@ -90,6 +107,9 @@
 
   <script>
     const apiToken = localStorage.getItem('API_TOKEN') || '';
+    let currentPage = 1;
+    let totalPages = 1;
+    let totalRows = 0;
 
     function headers() {
       const h = { 'Content-Type': 'application/json' };
@@ -221,11 +241,33 @@
       document.getElementById('detailModal').hidden = true;
     }
 
-    async function loadMessages() {
+    function updatePager(json) {
+      const limit = Number(json.limit || document.getElementById('pageSize').value || 50);
+      totalRows = Number(json.total || 0);
+      currentPage = Number(json.page || 1);
+      totalPages = Math.max(1, Math.ceil(totalRows / limit) || 1);
+
+      const from = totalRows === 0 ? 0 : (currentPage - 1) * limit + 1;
+      const to = Math.min(currentPage * limit, totalRows);
+
+      document.getElementById('pagerInfo').textContent =
+        totalRows === 0 ? 'Tidak ada data' : `Menampilkan ${from}–${to} dari ${totalRows} pesan`;
+      document.getElementById('pagerPage').textContent = `Halaman ${currentPage} / ${totalPages}`;
+      document.getElementById('btnPrev').disabled = currentPage <= 1;
+      document.getElementById('btnNext').disabled = currentPage >= totalPages;
+    }
+
+    async function loadMessages(resetPage = false) {
+      if (resetPage) currentPage = 1;
+
       const q = document.getElementById('q').value.trim();
       const status = document.getElementById('status').value;
       const type = document.getElementById('type').value;
-      const params = new URLSearchParams({ limit: '100' });
+      const limit = document.getElementById('pageSize').value || '50';
+      const params = new URLSearchParams({
+        limit: String(limit),
+        page: String(currentPage),
+      });
       if (q) params.set('q', q);
       if (status) params.set('status', status);
       if (type) params.set('type', type);
@@ -239,6 +281,7 @@
       document.getElementById('cSent').textContent = s.SENT || 0;
       document.getElementById('cFailed').textContent = s.FAILED || 0;
       document.getElementById('cSending').textContent = s.SENDING || 0;
+      updatePager(json);
 
       const tbody = document.getElementById('rows');
       if (!json.data?.length) {
@@ -269,9 +312,20 @@
     }
 
     document.getElementById('btnRefresh').onclick = () => loadMessages().catch((e) => toast(e.message));
-    document.getElementById('q').oninput = debounce(() => loadMessages().catch((e) => toast(e.message)), 350);
-    document.getElementById('status').onchange = () => loadMessages().catch((e) => toast(e.message));
-    document.getElementById('type').onchange = () => loadMessages().catch((e) => toast(e.message));
+    document.getElementById('q').oninput = debounce(() => loadMessages(true).catch((e) => toast(e.message)), 350);
+    document.getElementById('status').onchange = () => loadMessages(true).catch((e) => toast(e.message));
+    document.getElementById('type').onchange = () => loadMessages(true).catch((e) => toast(e.message));
+    document.getElementById('pageSize').onchange = () => loadMessages(true).catch((e) => toast(e.message));
+    document.getElementById('btnPrev').onclick = () => {
+      if (currentPage <= 1) return;
+      currentPage -= 1;
+      loadMessages().catch((e) => toast(e.message));
+    };
+    document.getElementById('btnNext').onclick = () => {
+      if (currentPage >= totalPages) return;
+      currentPage += 1;
+      loadMessages().catch((e) => toast(e.message));
+    };
     document.getElementById('btnCloseDetail').onclick = closeDetail;
     document.getElementById('detailModal').addEventListener('click', (e) => {
       if (e.target.id === 'detailModal') closeDetail();

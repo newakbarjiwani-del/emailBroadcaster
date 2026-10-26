@@ -62,6 +62,8 @@ Lalu buka http://127.0.0.1:8080/dashboard.html
 
 ## API
 
+Dokumentasi lengkap (field, contoh JSON, cURL): **[docs/API.md](docs/API.md)**
+
 Base URL contoh: `http://101.50.2.56/emailBroadcaster`
 
 | Method | File | Keterangan |
