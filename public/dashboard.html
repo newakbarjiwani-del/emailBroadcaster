@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Email Broadcaster — Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Email Broadcaster</h1>
+      <p class="muted">Pantau antrian penagihan &amp; konfirmasi pembayaran</p>
+    </div>
+    <div class="actions">
+      <button id="btnRefresh" type="button">Refresh</button>
+      <button id="btnProcess" type="button" class="primary">Proses Sekarang</button>
+    </div>
+  </header>
+
+  <section class="cards" id="summaryCards">
+    <article class="card"><span>Pending</span><strong id="cPending">0</strong></article>
+    <article class="card sent"><span>Terkirim</span><strong id="cSent">0</strong></article>
+    <article class="card failed"><span>Gagal</span><strong id="cFailed">0</strong></article>
+    <article class="card"><span>Sending</span><strong id="cSending">0</strong></article>
+  </section>
+
+  <section class="toolbar">
+    <input id="q" type="search" placeholder="Cari nama / email / NIS / invoice..." />
+    <select id="status">
+      <option value="">Semua status</option>
+      <option value="PENDING">PENDING</option>
+      <option value="SENT">SENT</option>
+      <option value="FAILED">FAILED</option>
+      <option value="SENDING">SENDING</option>
+    </select>
+    <select id="type">
+      <option value="">Semua tipe</option>
+      <option value="BILLING">BILLING</option>
+      <option value="PAYMENT_CONFIRMATION">PAYMENT_CONFIRMATION</option>
+    </select>
+  </section>
+
+  <section class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Waktu</th>
+          <th>Tipe</th>
+          <th>Siswa</th>
+          <th>Email</th>
+          <th>Subject</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7" class="muted">Memuat...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p id="toast" class="toast" hidden></p>
+
+  <script>
+    const apiToken = localStorage.getItem('API_TOKEN') || '';
+
+    function headers() {
+      const h = { 'Content-Type': 'application/json' };
+      if (apiToken) h['Authorization'] = `Bearer ${apiToken}`;
+      return h;
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.hidden = false;
+      setTimeout(() => { el.hidden = true; }, 2800);
+    }
+
+    function badge(status) {
+      return `<span class="badge ${String(status).toLowerCase()}">${status}</span>`;
+    }
+
+    function fmt(dt) {
+      if (!dt) return '-';
+      return new Date(String(dt).replace(' ', 'T')).toLocaleString('id-ID');
+    }
+
+    function escapeHtml(v) {
+      return String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function loadMessages() {
+      const q = document.getElementById('q').value.trim();
+      const status = document.getElementById('status').value;
+      const type = document.getElementById('type').value;
+      const params = new URLSearchParams({ limit: '100' });
+      if (q) params.set('q', q);
+      if (status) params.set('status', status);
+      if (type) params.set('type', type);
+
+      const res = await fetch(`/api/messages?${params}`, { headers: headers() });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat');
+
+      const s = json.summary || {};
+      document.getElementById('cPending').textContent = s.PENDING || 0;
+      document.getElementById('cSent').textContent = s.SENT || 0;
+      document.getElementById('cFailed').textContent = s.FAILED || 0;
+      document.getElementById('cSending').textContent = s.SENDING || 0;
+
+      const tbody = document.getElementById('rows');
+      if (!json.data?.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="muted">Belum ada pesan</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = json.data.map((m) => `
+        <tr>
+          <td>${fmt(m.createdAt)}</td>
+          <td>${m.type === 'BILLING' ? 'Penagihan' : 'Konfirmasi'}</td>
+          <td>
+            <div>${escapeHtml(m.studentName)}</div>
+            <div class="muted small">${escapeHtml([m.studentClass, m.studentNis].filter(Boolean).join(' · ') || '-')}</div>
+          </td>
+          <td>${escapeHtml(m.recipientEmail)}</td>
+          <td>${escapeHtml(m.subject)}</td>
+          <td>
+            ${badge(m.status)}
+            ${m.errorMessage ? `<div class="err">${escapeHtml(m.errorMessage)}</div>` : ''}
+            ${m.sentAt ? `<div class="muted small">sent ${fmt(m.sentAt)}</div>` : ''}
+          </td>
+          <td>
+            ${m.status === 'FAILED' ? `<button data-retry="${m.id}" class="linkish">Retry</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('btnRefresh').onclick = () => loadMessages().catch((e) => toast(e.message));
+    document.getElementById('q').oninput = debounce(() => loadMessages().catch((e) => toast(e.message)), 350);
+    document.getElementById('status').onchange = () => loadMessages().catch((e) => toast(e.message));
+    document.getElementById('type').onchange = () => loadMessages().catch((e) => toast(e.message));
+
+    document.getElementById('btnProcess').onclick = async () => {
+      try {
+        const res = await fetch('/api/process-now', { method: 'POST', headers: headers() });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Gagal proses');
+        toast(json.skipped ? json.reason : `Diproses: ${json.processed}, sent: ${json.sent}, failed: ${json.failed}`);
+        await loadMessages();
+      } catch (e) {
+        toast(e.message);
+      }
+    };
+
+    document.getElementById('rows').onclick = async (e) => {
+      const id = e.target?.dataset?.retry;
+      if (!id) return;
+      try {
+        const res = await fetch(`/api/messages/${id}/retry`, { method: 'POST', headers: headers() });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Gagal retry');
+        toast('Pesan dikembalikan ke PENDING');
+        await loadMessages();
+      } catch (err) {
+        toast(err.message);
+      }
+    };
+
+    function debounce(fn, ms) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    loadMessages().catch((e) => toast(e.message));
+    setInterval(() => loadMessages().catch(() => {}), 30000);
+  </script>
+</body>
+</html>
