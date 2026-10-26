@@ -36,13 +36,17 @@ function render_billing_email(array $message): array
         $totalLabel .= ' + ' . format_rupiah($adminFee) . ' (' . $adminFeeLabel . ')';
     }
 
+    $brandBg = (string) Config::get('MAIL_BRAND_COLOR', '#0a0a0a');
+    $brandAccent = (string) Config::get('MAIL_BRAND_ACCENT', '#4fbef7');
+    $brandOrange = (string) Config::get('MAIL_BRAND_ORANGE', '#f59d42');
+
     $paymentButton = '';
     if (!empty($message['paymentLink'])) {
         $paymentButton = '<p style="margin:28px 0 8px;text-align:center;">
-        <a href="' . escape_html($message['paymentLink']) . '" style="display:inline-block;background:#ea580c;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;">Bayar Disini</a>
+        <a href="' . escape_html($message['paymentLink']) . '" style="display:inline-block;background:' . escape_html($brandOrange) . ';color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;">Bayar Disini</a>
       </p>
       <p style="margin:0 0 8px;text-align:center;font-size:12px;color:#6b7280;">
-        atau buka: <a href="' . escape_html($message['paymentLink']) . '" style="color:#0f766e;">' . escape_html($message['paymentLink']) . '</a>
+        atau buka: <a href="' . escape_html($message['paymentLink']) . '" style="color:' . escape_html($brandAccent) . ';">' . escape_html($message['paymentLink']) . '</a>
       </p>';
     }
 
@@ -61,10 +65,8 @@ function render_billing_email(array $message): array
         : '';
 
     $logoUrl = Config::mailLogoUrl();
-    $logoBlock = $logoUrl !== ''
-        ? '<div style="margin-top:28px;text-align:center;">
-            <img src="' . escape_html($logoUrl) . '" alt="Logo" width="120" style="max-width:120px;height:auto;border:0;display:inline-block;" />
-          </div>'
+    $headerLogo = $logoUrl !== ''
+        ? '<img src="' . escape_html($logoUrl) . '" alt="ICT" width="72" height="72" style="display:block;width:72px;height:72px;border:0;border-radius:8px;" />'
         : '';
 
     $detailRows = [
@@ -99,9 +101,16 @@ function render_billing_email(array $message): array
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
         <tr>
-          <td style="background:#0f766e;color:#fff;padding:20px 24px;">
-            <div style="font-size:18px;font-weight:700;">Notifikasi Tagihan</div>
-            <div style="opacity:.9;margin-top:4px;font-size:13px;">Assalamu\'alaikum Warrahmatullahi Wabarakatuh</div>
+          <td style="background:' . escape_html($brandBg) . ';color:#fff;padding:18px 20px;border-bottom:3px solid ' . escape_html($brandAccent) . ';">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td align="left" valign="middle" style="padding-right:12px;">
+                  <div style="font-size:18px;font-weight:700;color:#ffffff;">Notifikasi Tagihan</div>
+                  <div style="margin-top:4px;font-size:13px;color:' . escape_html($brandAccent) . ';">Assalamu\'alaikum Warrahmatullahi Wabarakatuh</div>
+                </td>
+                <td align="right" valign="middle" width="80">' . $headerLogo . '</td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
@@ -134,7 +143,6 @@ function render_billing_email(array $message): array
 
             ' . $paymentButton . '
             ' . $guideBlock . '
-            ' . $logoBlock . '
           </td>
         </tr>
         <tr>
