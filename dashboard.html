@@ -7,58 +7,71 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="top">
-    <div>
-      <h1>Email Broadcaster</h1>
-      <p class="muted">Pantau antrian penagihan &amp; konfirmasi pembayaran</p>
-    </div>
-    <div class="actions">
-      <button id="btnRefresh" type="button">Refresh</button>
-      <button id="btnProcess" type="button" class="primary">Proses Sekarang</button>
-    </div>
-  </header>
+  <div class="bg-stage" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="bg-orb a"></div>
+    <div class="bg-orb b"></div>
+    <div class="bg-orb c"></div>
+    <div class="bg-scan"></div>
+  </div>
 
-  <section class="cards" id="summaryCards">
-    <article class="card"><span>Pending</span><strong id="cPending">0</strong></article>
-    <article class="card sent"><span>Terkirim</span><strong id="cSent">0</strong></article>
-    <article class="card failed"><span>Gagal</span><strong id="cFailed">0</strong></article>
-    <article class="card"><span>Sending</span><strong id="cSending">0</strong></article>
-  </section>
+  <div class="shell">
+    <header class="top">
+      <div class="brand">
+        <img src="logo.png" alt="ICT" width="56" height="56" />
+        <div>
+          <h1>Email Broadcaster</h1>
+          <p class="muted">Pantau antrian penagihan &amp; konfirmasi pembayaran</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btnRefresh" type="button">Refresh</button>
+        <button id="btnProcess" type="button" class="primary">Proses Sekarang</button>
+      </div>
+    </header>
 
-  <section class="toolbar">
-    <input id="q" type="search" placeholder="Cari nama / email / NIS / invoice..." />
-    <select id="status">
-      <option value="">Semua status</option>
-      <option value="PENDING">PENDING</option>
-      <option value="SENT">SENT</option>
-      <option value="FAILED">FAILED</option>
-      <option value="SENDING">SENDING</option>
-    </select>
-    <select id="type">
-      <option value="">Semua tipe</option>
-      <option value="BILLING">BILLING</option>
-      <option value="PAYMENT_CONFIRMATION">PAYMENT_CONFIRMATION</option>
-    </select>
-  </section>
+    <section class="cards" id="summaryCards">
+      <article class="card"><span>Pending</span><strong id="cPending">0</strong></article>
+      <article class="card sent"><span>Terkirim</span><strong id="cSent">0</strong></article>
+      <article class="card failed"><span>Gagal</span><strong id="cFailed">0</strong></article>
+      <article class="card"><span>Sending</span><strong id="cSending">0</strong></article>
+    </section>
 
-  <section class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Waktu</th>
-          <th>Tipe</th>
-          <th>Siswa</th>
-          <th>Email</th>
-          <th>Subject</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="7" class="muted">Memuat...</td></tr>
-      </tbody>
-    </table>
-  </section>
+    <section class="toolbar">
+      <input id="q" type="search" placeholder="Cari nama / email / NIS / invoice..." />
+      <select id="status">
+        <option value="">Semua status</option>
+        <option value="PENDING">PENDING</option>
+        <option value="SENT">SENT</option>
+        <option value="FAILED">FAILED</option>
+        <option value="SENDING">SENDING</option>
+      </select>
+      <select id="type">
+        <option value="">Semua tipe</option>
+        <option value="BILLING">BILLING</option>
+        <option value="PAYMENT_CONFIRMATION">PAYMENT_CONFIRMATION</option>
+      </select>
+    </section>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Tipe</th>
+            <th>Siswa</th>
+            <th>Email</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="7" class="muted">Memuat...</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
 
   <p id="toast" class="toast" hidden></p>
 
