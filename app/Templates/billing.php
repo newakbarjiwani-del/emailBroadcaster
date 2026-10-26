@@ -3,12 +3,24 @@
 function render_billing_email(array $message): array
 {
     $items = parse_items($message['itemsJson'] ?? '[]');
+    $meta = $message['meta'] ?? parse_meta($message['metaJson'] ?? '{}');
+
+    $org = (string) ($meta['organizationName'] ?? Config::organizationName());
+    $billType = (string) ($meta['billType'] ?? 'CLOSE');
+    $invoiceDate = (string) ($meta['invoiceDate'] ?? '');
+    $activeDate = (string) ($meta['activeDate'] ?? '');
+    $expireDate = (string) ($meta['expireDate'] ?? '');
+    $adminFee = $meta['adminFee'] ?? null;
+    $adminFeeLabel = (string) ($meta['adminFeeLabel'] ?? 'Admin VA');
+
     $rows = '';
+    $textItems = [];
     foreach ($items as $item) {
         $rows .= '<tr>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">' . escape_html($item['name'] ?? '') . '</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">' . format_rupiah($item['amount'] ?? 0) . '</td>
       </tr>';
+        $textItems[] = '- ' . ($item['name'] ?? '') . ': ' . format_rupiah($item['amount'] ?? 0);
     }
 
     $outstandingBlock = '';
@@ -19,10 +31,18 @@ function render_billing_email(array $message): array
         </tr>';
     }
 
+    $totalLabel = format_rupiah($message['totalAmount'] ?? 0);
+    if ($adminFee !== null && $adminFee !== '') {
+        $totalLabel .= ' + ' . format_rupiah($adminFee) . ' (' . $adminFeeLabel . ')';
+    }
+
     $paymentButton = '';
     if (!empty($message['paymentLink'])) {
         $paymentButton = '<p style="margin:28px 0 8px;text-align:center;">
         <a href="' . escape_html($message['paymentLink']) . '" style="display:inline-block;background:#ea580c;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;">Bayar Disini</a>
+      </p>
+      <p style="margin:0 0 8px;text-align:center;font-size:12px;color:#6b7280;">
+        atau buka: <a href="' . escape_html($message['paymentLink']) . '" style="color:#0f766e;">' . escape_html($message['paymentLink']) . '</a>
       </p>';
     }
 
@@ -33,25 +53,43 @@ function render_billing_email(array $message): array
         }
     }
 
-    $classRow = !empty($message['studentClass'])
-        ? '<tr><td style="padding:6px 0;color:#6b7280;">Kelas</td><td style="padding:6px 0;">' . escape_html($message['studentClass']) . '</td></tr>'
-        : '';
-    $nisRow = !empty($message['studentNis'])
-        ? '<tr><td style="padding:6px 0;color:#6b7280;">NIS</td><td style="padding:6px 0;">' . escape_html($message['studentNis']) . '</td></tr>'
-        : '';
-    $vaRow = !empty($message['vaNumber'])
-        ? '<tr><td style="padding:6px 0;color:#6b7280;">Nomor VA</td><td style="padding:6px 0;font-weight:700;letter-spacing:.3px;">' . escape_html($message['vaNumber']) . '</td></tr>'
-        : '';
-    $invoiceRow = !empty($message['orderNumber'])
-        ? '<tr><td style="padding:6px 0;color:#6b7280;">No. Invoice</td><td style="padding:6px 0;">' . escape_html($message['orderNumber']) . '</td></tr>'
-        : '';
-
     $guideBlock = $guide !== ''
         ? '<div style="margin-top:20px;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;line-height:1.6;color:#9a3412;">
-                    <div style="font-weight:700;margin-bottom:6px;">Tata Cara Pembayaran</div>
+                    <div style="font-weight:700;margin-bottom:6px;">PANDUAN/TATA CARA PEMBAYARAN</div>
                     ' . $guide . '
                   </div>'
         : '';
+
+    $logoUrl = Config::mailLogoUrl();
+    $logoBlock = $logoUrl !== ''
+        ? '<div style="margin-top:28px;text-align:center;">
+            <img src="' . escape_html($logoUrl) . '" alt="Logo" width="120" style="max-width:120px;height:auto;border:0;display:inline-block;" />
+          </div>'
+        : '';
+
+    $detailRows = [
+        ['No. Invoice', $message['orderNumber'] ?? null],
+        ['Tanggal Dibuat', $invoiceDate !== '' ? $invoiceDate : null],
+        ['No. Pembayaran (VA)', $message['vaNumber'] ?? null],
+        ['Nama', $message['studentName'] ?? null],
+        ['Kelas', $message['studentClass'] ?? null],
+        ['NIS', $message['studentNis'] ?? null],
+        ['Email', $message['recipientEmail'] ?? null],
+        ['Tipe/Jenis Tagihan', $billType],
+        ['Tanggal Aktif', $activeDate !== '' ? $activeDate : null],
+        ['Tanggal Berakhir', $expireDate !== '' ? $expireDate : null],
+    ];
+
+    $detailHtml = '';
+    foreach ($detailRows as [$label, $value]) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+        $detailHtml .= '<tr>
+          <td style="padding:6px 0;width:170px;color:#6b7280;vertical-align:top;">' . escape_html($label) . '</td>
+          <td style="padding:6px 0;">: ' . escape_html($value) . '</td>
+        </tr>';
+    }
 
     $html = '<!DOCTYPE html>
 <html>
@@ -69,12 +107,11 @@ function render_billing_email(array $message): array
         <tr>
           <td style="padding:24px;">
             <p style="margin:0 0 16px;line-height:1.5;">
-              Berikut tagihan yang harus dibayarkan dengan rincian sebagai berikut:
+              Berikut tagihan yang harus dibayarkan kepada <strong>' . escape_html($org) . '</strong> dengan rincian sebagai berikut:
             </p>
 
             <table role="presentation" width="100%" style="border-collapse:collapse;margin-bottom:18px;font-size:14px;">
-              <tr><td style="padding:6px 0;width:140px;color:#6b7280;">Nama</td><td style="padding:6px 0;font-weight:600;">' . escape_html($message['studentName'] ?? '') . '</td></tr>
-              ' . $classRow . $nisRow . $vaRow . $invoiceRow . '
+              ' . $detailHtml . '
             </table>
 
             <div style="font-size:14px;font-weight:700;margin:0 0 8px;">Rincian Pembayaran</div>
@@ -88,8 +125,8 @@ function render_billing_email(array $message): array
               <tbody>
                 ' . ($rows !== '' ? $rows : '<tr><td colspan="2" style="padding:12px;color:#6b7280;">Tidak ada item</td></tr>') . '
                 <tr>
-                  <td style="padding:10px 12px;font-weight:700;background:#f9fafb;">Total Tagihan</td>
-                  <td style="padding:10px 12px;text-align:right;font-weight:700;background:#f9fafb;">' . format_rupiah($message['totalAmount'] ?? 0) . '</td>
+                  <td style="padding:10px 12px;font-weight:700;background:#f9fafb;">Total Nominal</td>
+                  <td style="padding:10px 12px;text-align:right;font-weight:700;background:#f9fafb;">' . escape_html($totalLabel) . '</td>
                 </tr>
                 ' . $outstandingBlock . '
               </tbody>
@@ -97,11 +134,12 @@ function render_billing_email(array $message): array
 
             ' . $paymentButton . '
             ' . $guideBlock . '
+            ' . $logoBlock . '
           </td>
         </tr>
         <tr>
           <td style="padding:14px 24px;background:#f9fafb;color:#6b7280;font-size:12px;">
-            Email ini dikirim otomatis. Mohon tidak membalas email ini.
+            Email ini dikirim otomatis oleh ' . escape_html($org) . '.
           </td>
         </tr>
       </table>
@@ -110,36 +148,44 @@ function render_billing_email(array $message): array
 </body>
 </html>';
 
-    $textItems = [];
-    foreach ($items as $i) {
-        $textItems[] = '- ' . ($i['name'] ?? '') . ': ' . format_rupiah($i['amount'] ?? 0);
-    }
-
     $text = "Assalamu'alaikum Warrahmatullahi Wabarakatuh\n\n";
-    $text .= "Berikut tagihan yang harus dibayarkan:\n\n";
-    $text .= 'Nama: ' . ($message['studentName'] ?? '') . "\n";
-    if (!empty($message['studentClass'])) {
-        $text .= 'Kelas: ' . $message['studentClass'] . "\n";
+    $text .= 'Berikut tagihan yang harus dibayarkan kepada ' . $org . " dengan rincian sebagai berikut:\n\n";
+    if (!empty($message['orderNumber'])) {
+        $text .= 'No. Invoice : ' . $message['orderNumber'] . "\n";
     }
-    if (!empty($message['studentNis'])) {
-        $text .= 'NIS: ' . $message['studentNis'] . "\n";
+    if ($invoiceDate !== '') {
+        $text .= 'Tanggal Dibuat : ' . $invoiceDate . "\n";
     }
     if (!empty($message['vaNumber'])) {
-        $text .= 'Nomor VA: ' . $message['vaNumber'] . "\n";
+        $text .= 'No. Pembayaran (VA) : ' . $message['vaNumber'] . "\n";
     }
-    if (!empty($message['orderNumber'])) {
-        $text .= 'No. Invoice: ' . $message['orderNumber'] . "\n";
+    $text .= 'Nama : ' . ($message['studentName'] ?? '') . "\n";
+    if (!empty($message['studentClass'])) {
+        $text .= 'Kelas : ' . $message['studentClass'] . "\n";
     }
-    $text .= "\nRincian Pembayaran:\n" . implode("\n", $textItems) . "\n\n";
-    $text .= 'Total Tagihan: ' . format_rupiah($message['totalAmount'] ?? 0) . "\n";
+    if (!empty($message['studentNis'])) {
+        $text .= 'NIS : ' . $message['studentNis'] . "\n";
+    }
+    if (!empty($message['recipientEmail'])) {
+        $text .= 'Email : ' . $message['recipientEmail'] . "\n";
+    }
+    $text .= 'Tipe/Jenis Tagihan : ' . $billType . "\n";
+    if ($activeDate !== '') {
+        $text .= 'Tanggal Aktif : ' . $activeDate . "\n";
+    }
+    if ($expireDate !== '') {
+        $text .= 'Tanggal Berakhir : ' . $expireDate . "\n";
+    }
+    $text .= "\nRincian Pembayaran :\n" . implode("\n", $textItems) . "\n\n";
+    $text .= 'Total Nominal : ' . $totalLabel . "\n";
     if (isset($message['outstandingAmount']) && $message['outstandingAmount'] !== null && $message['outstandingAmount'] !== '') {
-        $text .= 'Outstanding / Sisa Cicilan: ' . format_rupiah($message['outstandingAmount']) . "\n";
+        $text .= 'Outstanding / Sisa Cicilan : ' . format_rupiah($message['outstandingAmount']) . "\n";
     }
     if (!empty($message['paymentLink'])) {
-        $text .= 'Link Pembayaran: ' . $message['paymentLink'] . "\n";
+        $text .= "\nBayar Disini : " . $message['paymentLink'] . "\n";
     }
     if (!empty($message['paymentGuide'])) {
-        $text .= "\n" . $message['paymentGuide'] . "\n";
+        $text .= "\nPANDUAN/TATA CARA PEMBAYARAN:\n" . $message['paymentGuide'] . "\n";
     }
 
     return ['html' => $html, 'text' => $text];

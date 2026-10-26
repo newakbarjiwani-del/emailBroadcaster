@@ -24,6 +24,7 @@ class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
             self::ensureMysqlSchema(self::$pdo, $rootPath);
+            self::ensureMetaColumn(self::$pdo, 'mysql');
             return self::$pdo;
         }
 
@@ -50,6 +51,7 @@ class Database
         } else {
             self::ensureSqliteSchema(self::$pdo, $rootPath);
         }
+        self::ensureMetaColumn(self::$pdo, 'sqlite');
 
         return self::$pdo;
     }
@@ -69,6 +71,30 @@ class Database
         $exists = $stmt->fetchColumn();
         if (!$exists) {
             self::runSqlFile($pdo, $rootPath . DIRECTORY_SEPARATOR . 'sql' . DIRECTORY_SEPARATOR . 'schema.mysql.sql');
+        }
+    }
+
+    private static function ensureMetaColumn(PDO $pdo, string $driver): void
+    {
+        try {
+            if ($driver === 'mysql') {
+                $stmt = $pdo->query("SHOW COLUMNS FROM email_messages LIKE 'meta_json'");
+                if (!$stmt->fetch()) {
+                    $pdo->exec('ALTER TABLE email_messages ADD COLUMN meta_json LONGTEXT NULL AFTER payment_guide');
+                }
+                return;
+            }
+
+            $stmt = $pdo->query('PRAGMA table_info(email_messages)');
+            $cols = $stmt->fetchAll();
+            foreach ($cols as $col) {
+                if (($col['name'] ?? '') === 'meta_json') {
+                    return;
+                }
+            }
+            $pdo->exec("ALTER TABLE email_messages ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}'");
+        } catch (Throwable $e) {
+            // ignore if table not ready
         }
     }
 

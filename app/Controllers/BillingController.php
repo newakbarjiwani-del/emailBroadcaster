@@ -65,7 +65,11 @@ class BillingController
         $studentClass = first_value($payload, ['studentClass', 'kelas']);
         $studentNis = first_value($payload, ['studentNis', 'nis']);
         $vaNumber = first_value($payload, ['vaNumber', 'va', 'nomorVa']);
-        $paymentLink = first_value($payload, ['paymentLink', 'linkPembayaran']);
+        $paymentLink = first_value(
+            $payload,
+            ['paymentLink', 'linkPembayaran'],
+            Config::get('DEFAULT_PAYMENT_LINK', 'https://sdit-gemanurani.smartpayment.co.id')
+        );
         $orderNumber = first_value($payload, ['orderNumber', 'invoiceNumber', 'noInvoice']);
 
         $outstanding = null;
@@ -86,6 +90,23 @@ class BillingController
             }
         }
 
+        $adminFee = null;
+        if (array_key_exists('adminFee', $payload) && $payload['adminFee'] !== null && $payload['adminFee'] !== '') {
+            $adminFee = (float) $payload['adminFee'];
+        } elseif (array_key_exists('biayaAdmin', $payload) && $payload['biayaAdmin'] !== null && $payload['biayaAdmin'] !== '') {
+            $adminFee = (float) $payload['biayaAdmin'];
+        }
+
+        $meta = [
+            'organizationName' => first_value($payload, ['organizationName', 'yayasan', 'organisasi'], Config::organizationName()),
+            'billType' => first_value($payload, ['billType', 'tipeTagihan', 'jenisTagihan'], 'CLOSE'),
+            'invoiceDate' => first_value($payload, ['invoiceDate', 'tanggalDibuat', 'createdDate']),
+            'activeDate' => first_value($payload, ['activeDate', 'tanggalAktif']),
+            'expireDate' => first_value($payload, ['expireDate', 'tanggalBerakhir', 'kadaluarsa']),
+            'adminFee' => $adminFee,
+            'adminFeeLabel' => first_value($payload, ['adminFeeLabel', 'labelAdmin'], 'Admin VA'),
+        ];
+
         return [
             'type' => 'BILLING',
             'status' => 'PENDING',
@@ -98,6 +119,7 @@ class BillingController
             'va_number' => $vaNumber,
             'payment_link' => $paymentLink,
             'payment_guide' => first_value($payload, ['paymentGuide', 'tataCara'], Config::defaultPaymentGuide()),
+            'meta_json' => json_encode($meta, JSON_UNESCAPED_UNICODE),
             'items_json' => json_encode($items, JSON_UNESCAPED_UNICODE),
             'total_amount' => $totalAmount,
             'outstanding_amount' => $outstanding,

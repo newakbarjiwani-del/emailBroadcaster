@@ -13,12 +13,12 @@ class MessageRepository
 
         $sql = 'INSERT INTO email_messages (
             id, type, status, recipient_email, recipient_name, student_name, student_nis, student_class,
-            subject, va_number, payment_link, payment_guide, items_json, total_amount, outstanding_amount,
+            subject, va_number, payment_link, payment_guide, meta_json, items_json, total_amount, outstanding_amount,
             bill_amount, payment_amount, order_number, reference_number, payment_method, paid_at,
             error_message, attempts, sent_at, created_at, updated_at
         ) VALUES (
             :id, :type, :status, :recipient_email, :recipient_name, :student_name, :student_nis, :student_class,
-            :subject, :va_number, :payment_link, :payment_guide, :items_json, :total_amount, :outstanding_amount,
+            :subject, :va_number, :payment_link, :payment_guide, :meta_json, :items_json, :total_amount, :outstanding_amount,
             :bill_amount, :payment_amount, :order_number, :reference_number, :payment_method, :paid_at,
             NULL, 0, NULL, :created_at, :updated_at
         )';
@@ -37,6 +37,7 @@ class MessageRepository
             ':va_number' => $data['va_number'] ?? null,
             ':payment_link' => $data['payment_link'] ?? null,
             ':payment_guide' => $data['payment_guide'] ?? null,
+            ':meta_json' => $data['meta_json'] ?? '{}',
             ':items_json' => $data['items_json'] ?? '[]',
             ':total_amount' => $data['total_amount'] ?? 0,
             ':outstanding_amount' => $data['outstanding_amount'] ?? null,

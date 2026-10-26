@@ -1,15 +1,13 @@
 <?php
 
 /**
- * Jalankan tiap 2 menit via Windows Task Scheduler / crontab.
+ * Jalankan tiap 2 menit via crontab (SSH server).
  *
- * Windows (Task Scheduler):
- *   Program: php.exe
- *   Arguments: "D:\PROJECT\ICT\emailBroadcaster\cron\send_emails.php"
- *   Trigger: setiap 2 menit
- *
- * Linux crontab:
- *   */2 * * * * php /path/to/emailBroadcaster/cron/send_emails.php >> /path/to/storage/cron.log 2>&1
+ * 1) Cari path PHP:  which php
+ * 2) Edit crontab:   crontab -e
+ * 3) Tambah baris (sesuaikan path):
+ *    */2 * * * * /usr/bin/php /var/www/html/emailBroadcaster/cron/send_emails.php >> /var/www/html/emailBroadcaster/storage/cron.log 2>&1
+ * 4) Cek: crontab -l
  */
 
 declare(strict_types=1);

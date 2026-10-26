@@ -80,4 +80,25 @@ class Config
             "PANDUAN PEMBAYARAN:\n1. Transfer ke Virtual Account (VA) yang tertera\n2. Atau klik Link Pembayaran pada email\n3. Simpan bukti pembayaran"
         );
     }
+
+    public static function organizationName(): string
+    {
+        return (string) self::get('ORGANIZATION_NAME', 'Yayasan Asasi Indonesia');
+    }
+
+    /** Absolute URL for logo in email (must be publicly reachable). */
+    public static function mailLogoUrl(): string
+    {
+        $logo = trim((string) self::get('MAIL_LOGO_URL', ''));
+        if ($logo !== '') {
+            if (preg_match('#^https?://#i', $logo)) {
+                return $logo;
+            }
+            $base = rtrim((string) self::get('APP_BASE_URL', ''), '/');
+            return $base . '/' . ltrim($logo, '/');
+        }
+
+        $base = rtrim((string) self::get('APP_BASE_URL', ''), '/');
+        return $base !== '' ? ($base . '/logo.png') : 'logo.png';
+    }
 }

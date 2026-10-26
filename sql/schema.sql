@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
   va_number TEXT,
   payment_link TEXT,
   payment_guide TEXT,
+  meta_json TEXT NOT NULL DEFAULT '{}',
 
   items_json TEXT NOT NULL DEFAULT '[]',
   total_amount REAL NOT NULL DEFAULT 0,

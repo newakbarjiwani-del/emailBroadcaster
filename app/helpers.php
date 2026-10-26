@@ -132,8 +132,22 @@ function require_fields(array $payload, array $fields): array
     return $missing;
 }
 
+function parse_meta($metaJson): array
+{
+    if (is_array($metaJson)) {
+        return $metaJson;
+    }
+    if (!is_string($metaJson) || $metaJson === '') {
+        return [];
+    }
+    $decoded = json_decode($metaJson, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
 function message_to_array(array $row): array
 {
+    $meta = parse_meta($row['meta_json'] ?? '{}');
+
     return [
         'id' => $row['id'],
         'type' => $row['type'],
@@ -147,6 +161,8 @@ function message_to_array(array $row): array
         'vaNumber' => $row['va_number'],
         'paymentLink' => $row['payment_link'],
         'paymentGuide' => $row['payment_guide'],
+        'metaJson' => $row['meta_json'] ?? '{}',
+        'meta' => $meta,
         'itemsJson' => $row['items_json'],
         'totalAmount' => $row['total_amount'] !== null ? (float) $row['total_amount'] : null,
         'outstandingAmount' => $row['outstanding_amount'] !== null ? (float) $row['outstanding_amount'] : null,

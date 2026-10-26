@@ -67,6 +67,9 @@ function render_payment_confirmation_email(array $message): array
               Please keep this email as your reference. If you have any questions about Your order please contact the school finance office.
             </p>
             <p style="margin:16px 0 0;font-weight:700;">Thank You.</p>
+            <div style="margin-top:28px;text-align:center;">
+              <img src="' . escape_html(Config::mailLogoUrl()) . '" alt="Logo" width="120" style="max-width:120px;height:auto;border:0;display:inline-block;" />
+            </div>
           </td>
         </tr>
       </table>
