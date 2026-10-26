@@ -161,7 +161,7 @@ body {
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--ict-black);
+  color: #0c4a6e;
 }
 
 .brand .muted {
@@ -197,14 +197,14 @@ button:hover {
 }
 
 button.primary {
-  background: var(--ict-black);
-  border-color: var(--ict-black);
-  color: #fff;
+  background: var(--ict-blue);
+  border-color: var(--ict-blue);
+  color: #0b1220;
 }
 
 button.primary:hover {
-  background: #1f2937;
-  border-color: #1f2937;
+  background: #38b0ea;
+  border-color: #38b0ea;
 }
 
 button.linkish {
@@ -309,8 +309,8 @@ th, td {
 }
 
 th {
-  background: #0a0a0a;
-  color: #e2e8f0;
+  background: #e8f6fd;
+  color: #0c4a6e;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -318,6 +318,7 @@ th {
   position: sticky;
   top: 0;
   z-index: 1;
+  border-bottom: 2px solid var(--ict-blue);
 }
 
 tbody tr:hover {
@@ -353,11 +354,11 @@ tbody tr:hover {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: var(--ict-black);
+  background: #0c4a6e;
   color: #fff;
   padding: 12px 16px;
   border-radius: var(--radius);
-  border-left: 3px solid var(--ict-blue);
+  border-left: 3px solid var(--ict-orange);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
   z-index: 20;
 }
