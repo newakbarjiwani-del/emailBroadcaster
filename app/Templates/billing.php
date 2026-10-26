@@ -64,10 +64,6 @@ function render_billing_email(array $message): array
                   </div>'
         : '';
 
-    // CID embed (inline attachment) — lebih andal di Gmail daripada URL http://IP/...
-    $logoSrc = 'cid:' . Config::mailLogoCid();
-    $headerLogo = '<img src="' . escape_html($logoSrc) . '" alt="ICT" width="72" height="72" style="display:block;width:72px;height:72px;border:0;" />';
-
     $detailRows = [
         ['No. Invoice', $message['orderNumber'] ?? null],
         ['Tanggal Dibuat', $invoiceDate !== '' ? $invoiceDate : null],
@@ -101,15 +97,8 @@ function render_billing_email(array $message): array
       <table role="presentation" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
         <tr>
           <td style="background:' . escape_html($brandBg) . ';color:#fff;padding:18px 20px;border-bottom:3px solid ' . escape_html($brandAccent) . ';">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-              <tr>
-                <td align="left" valign="middle" style="padding-right:12px;">
-                  <div style="font-size:18px;font-weight:700;color:#ffffff;">Notifikasi Tagihan</div>
-                  <div style="margin-top:4px;font-size:13px;color:' . escape_html($brandAccent) . ';">Assalamu\'alaikum Warrahmatullahi Wabarakatuh</div>
-                </td>
-                <td align="right" valign="middle" width="80">' . $headerLogo . '</td>
-              </tr>
-            </table>
+            <div style="font-size:18px;font-weight:700;color:#ffffff;">Notifikasi Tagihan</div>
+            <div style="margin-top:4px;font-size:13px;color:' . escape_html($brandAccent) . ';">Assalamu\'alaikum Warrahmatullahi Wabarakatuh</div>
           </td>
         </tr>
         <tr>
